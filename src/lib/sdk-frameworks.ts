@@ -45,7 +45,7 @@ export const SDK_FRAMEWORKS: SdkFramework[] = [
     icon: 'terminal',
     available: true,
     installLabel: 'Terminal',
-    installCmd: 'npm install github:akshaymishra-a11y/eip-sdk',
+    installCmd: 'npm install archonix-sdk',
     initLabel: 'index.js',
     // apiUrl points the SDK at this platform's NestJS ingestion endpoint
     // (POST /api/telemetry/ingest) instead of talking to Supabase directly —
@@ -64,7 +64,7 @@ export const SDK_FRAMEWORKS: SdkFramework[] = [
     icon: 'terminal',
     available: true,
     installLabel: 'Terminal',
-    installCmd: 'npm install github:akshaymishra-a11y/eip-sdk',
+    installCmd: 'npm install archonix-sdk',
     initLabel: 'instrument.js (project root — plain .js, not .ts)',
     // A separate plain-JS file, preloaded via node -r (see the package.json
     // step below), is required here rather than a line inside main.ts:
