@@ -1,15 +1,21 @@
-export type SdkFrameworkId = 'nodejs' | 'python' | 'go' | 'java';
+export type SdkFrameworkId = 'nodejs' | 'nestjs' | 'python' | 'go' | 'java';
 
 export type SdkFramework = {
   id: SdkFrameworkId;
   label: string;
   icon: string;
-  /** Node.js is the only SDK shipped today — the rest are on the public roadmap. */
+  /** Node.js and NestJS are the SDKs shipped today — the rest are on the public roadmap. */
   available: boolean;
   installLabel: string;
   installCmd: string;
   initLabel: string;
   initCode: (apiKey: string, serviceName: string) => string;
+  /**
+   * Extra wiring steps shown between init and database wrapping — for
+   * frameworks (like NestJS) whose integration spans more than one file,
+   * unlike the single-file init frameworks below.
+   */
+  extraSteps?: { label: string; code: string }[];
   dbWrapLabel: string;
   dbWrapCode: string;
   loggingLabel: string;
@@ -49,6 +55,46 @@ export const SDK_FRAMEWORKS: SdkFramework[] = [
     dbWrapLabel: 'index.js',
     dbWrapCode: "monitor.wrapDatabase(pool, 'postgres');",
     loggingLabel: 'index.js',
+    loggingCode:
+      "monitor.logger.info('Order created', { orderId });\nmonitor.logger.warn('Payment retried');\nmonitor.logger.error('Payment failed', { reason });",
+  },
+  {
+    id: 'nestjs',
+    label: 'NestJS',
+    icon: 'terminal',
+    available: true,
+    installLabel: 'Terminal',
+    installCmd: 'npm install github:akshaymishra-a11y/eip-sdk',
+    initLabel: 'instrument.js (project root — plain .js, not .ts)',
+    // A separate plain-JS file, preloaded via node -r (see the package.json
+    // step below), is required here rather than a line inside main.ts:
+    // the SDK auto-instruments pg/ioredis/axios/etc. by patching Node's
+    // module loader the moment init() runs, and TypeScript's compiled
+    // `import` statements in main.ts don't reliably preserve that ordering.
+    // init() also returns a fresh monitor each call — this file exists so
+    // app.module.ts and main.ts can share the exact same instance instead
+    // of each calling init() again and double-reporting everything.
+    initCode: (apiKey, serviceName) =>
+      `const eip = require('archonix-sdk');\n\nconst monitor = eip.init({\n  apiKey: '${apiKey}',\n  apiUrl: '${import.meta.env.VITE_API_URL}',\n  environment: 'production',\n  serviceName: '${serviceName}',\n});\n\nmodule.exports = monitor;`,
+    extraSteps: [
+      {
+        label: 'package.json',
+        code: '{\n  "scripts": {\n    "start:prod": "node -r ./instrument.js dist/main"\n  }\n}',
+      },
+      {
+        label: 'app.module.ts',
+        code:
+          "const monitor = require('../instrument');\nconst { createEipModule } = require('archonix-sdk/nestjs');\n\n@Module({\n  imports: [createEipModule(monitor)],\n  // ...your existing controllers/providers\n})\nexport class AppModule {}",
+      },
+      {
+        label: 'main.ts',
+        code:
+          "const monitor = require('../instrument');\nconst { createEipExceptionFilter } = require('archonix-sdk/nestjs');\n\nasync function bootstrap() {\n  const app = await NestFactory.create(AppModule);\n  app.useGlobalFilters(new (createEipExceptionFilter(monitor))());\n  await app.listen(3000);\n}",
+      },
+    ],
+    dbWrapLabel: 'wherever you create your DB pool',
+    dbWrapCode: "monitor.wrapDatabase(pool, 'postgres');",
+    loggingLabel: 'anywhere monitor is imported',
     loggingCode:
       "monitor.logger.info('Order created', { orderId });\nmonitor.logger.warn('Payment retried');\nmonitor.logger.error('Payment failed', { reason });",
   },

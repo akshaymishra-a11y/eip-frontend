@@ -123,6 +123,9 @@ export default function SdkSetup() {
               <p className="text-sm text-text-secondary">Install the SDK, then add this to your application's entry point:</p>
               <CodeBlock label={framework.installLabel} code={framework.installCmd} />
               <CodeBlock label={framework.initLabel} code={framework.initCode(project.api_key, project.name)} />
+              {framework.extraSteps?.map((step) => (
+                <CodeBlock key={step.label} label={step.label} code={step.code} />
+              ))}
             </div>
           </Card>
 
