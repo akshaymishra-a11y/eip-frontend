@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: #f8fafc;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.eip-scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.eip-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.eip-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  z-index: 10;
+  opacity: 0.2;
+  background: linear-gradient(to right, transparent, #2563eb, transparent);
+  animation: eip-scan 4s linear infinite;
+}
+
+@keyframes eip-scan {
+  0% {
+    transform: translateY(0vh);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.eip-pulse-core {
+  animation: eip-pulse-core 2.5s ease-in-out infinite;
+}
+
+@keyframes eip-pulse-core {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.eip-orbit {
+  animation: eip-orbit 20s linear infinite;
+}
+
+@keyframes eip-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.eip-log-fade-in {
+  animation: eip-log-in 0.4s ease-out forwards;
+}
+
+@keyframes eip-log-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eip-graph-canvas {
+  background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.eip-animated-connection {
+  stroke-dasharray: 5, 5;
+  animation: eip-pulse-line 1s linear infinite;
+}
+
+@keyframes eip-pulse-line {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
