@@ -65,33 +65,20 @@ export const SDK_FRAMEWORKS: SdkFramework[] = [
     available: true,
     installLabel: 'Terminal',
     installCmd: 'npm install archonix-sdk',
-    initLabel: 'instrument.js (project root — plain .js, not .ts)',
-    // A separate plain-JS file, preloaded via node -r (see the package.json
-    // step below), is required here rather than a line inside main.ts:
-    // the SDK auto-instruments pg/ioredis/axios/etc. by patching Node's
-    // module loader the moment init() runs, and TypeScript's compiled
-    // `import` statements in main.ts don't reliably preserve that ordering.
-    // init() also returns a fresh monitor each call — this file exists so
-    // app.module.ts and main.ts can share the exact same instance instead
-    // of each calling init() again and double-reporting everything.
+    initLabel: 'main.ts — only file that needs changes',
+    // The require() call is placed BEFORE the `import` statements on purpose,
+    // and left as require() rather than converted to `import`: NestJS's
+    // default tsconfig compiles to CommonJS, which (unlike real ES modules)
+    // preserves textual order rather than hoisting imports — verified by
+    // compiling this exact shape and confirming the SDK's own "required
+    // before init()" warning does NOT fire. That ordering is what lets the
+    // SDK patch Node's module loader before pg/ioredis/etc. get required by
+    // AppModule, so auto-instrumentation still activates for them. Using
+    // app.use(monitor.middleware()) — Nest's Express passthrough — instead of
+    // the createEipModule() adapter means app.module.ts needs no changes at
+    // all; only main.ts does.
     initCode: (apiKey, serviceName) =>
-      `const eip = require('archonix-sdk');\n\nconst monitor = eip.init({\n  apiKey: '${apiKey}',\n  apiUrl: '${import.meta.env.VITE_API_URL}',\n  environment: 'production',\n  serviceName: '${serviceName}',\n});\n\nmodule.exports = monitor;`,
-    extraSteps: [
-      {
-        label: 'package.json',
-        code: '{\n  "scripts": {\n    "start:prod": "node -r ./instrument.js dist/main"\n  }\n}',
-      },
-      {
-        label: 'app.module.ts',
-        code:
-          "const monitor = require('../instrument');\nconst { createEipModule } = require('archonix-sdk/nestjs');\n\n@Module({\n  imports: [createEipModule(monitor)],\n  // ...your existing controllers/providers\n})\nexport class AppModule {}",
-      },
-      {
-        label: 'main.ts',
-        code:
-          "const monitor = require('../instrument');\nconst { createEipExceptionFilter } = require('archonix-sdk/nestjs');\n\nasync function bootstrap() {\n  const app = await NestFactory.create(AppModule);\n  app.useGlobalFilters(new (createEipExceptionFilter(monitor))());\n  await app.listen(3000);\n}",
-      },
-    ],
+      `const monitor = require('archonix-sdk').init({\n  apiKey: '${apiKey}',\n  apiUrl: '${import.meta.env.VITE_API_URL}',\n  environment: 'production',\n  serviceName: '${serviceName}',\n});\nconst { createEipExceptionFilter } = require('archonix-sdk/nestjs');\n\nimport { NestFactory } from '@nestjs/core';\nimport { AppModule } from './app.module';\n\nasync function bootstrap() {\n  const app = await NestFactory.create(AppModule);\n  app.use(monitor.middleware());\n  app.useGlobalFilters(new (createEipExceptionFilter(monitor))());\n  await app.listen(3000);\n}\nbootstrap();`,
     dbWrapLabel: 'wherever you create your DB pool',
     dbWrapCode: "monitor.wrapDatabase(pool, 'postgres');",
     loggingLabel: 'anywhere monitor is imported',
